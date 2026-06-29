@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: int_daily_aligned
+    description: >
+      All five data sources temporally aligned to a daily market spine.
+      Quarterly fundamentals and monthly macro are ASOF forward-filled;
+      sentiment is exact-date matched with 0.0 fill on news-quiet days.
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: date
+        tests: [not_null]

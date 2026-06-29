@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: stg_market
+    description: Daily market data with rolling volatility windows per ticker.
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: date
+        tests: [not_null]
+      - name: close
+        tests: [not_null]
+
+  - name: stg_sentiment
+    description: Daily news sentiment per ticker with 7-day rolling mean.
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: date
+        tests: [not_null]
+
+  - name: stg_fundamentals
+    description: Quarterly balance sheet ratios per ticker.
+    columns:
+      - name: ticker
+        tests: [not_null]
+
+  - name: stg_macro
+    description: Monthly BLS labor market metrics (unemployment + JOLTS layoff rates).
+    columns:
+      - name: date
+        tests: [not_null]
+
+  - name: stg_warn_labels
+    description: Resolved WARN Act event dates with stock ticker mapping.
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: event_date
+        tests: [not_null]

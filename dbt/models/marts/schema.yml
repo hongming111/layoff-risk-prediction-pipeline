@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: mart_layoff_risk_features
+    description: >
+      Daily feature matrix for layoff risk prediction — single schema contract
+      for ML training (train.py) and batch inference (predict.py).
+      Exported to data/features/feature_matrix.parquet after dbt run.
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: date
+        tests: [not_null]
+      - name: close
+        tests: [not_null]
+      - name: label
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]

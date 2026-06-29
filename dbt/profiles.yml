@@ -1,0 +1,7 @@
+layoff_risk:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: /opt/airflow/data/dbt.duckdb
+      threads: 4

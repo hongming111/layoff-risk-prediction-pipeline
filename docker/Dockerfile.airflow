@@ -1,0 +1,18 @@
+FROM apache/airflow:2.9.1-python3.11
+
+# Install system deps as root, then drop back to airflow user
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+USER airflow
+
+# Install project Python dependencies into the Airflow image
+COPY --chown=airflow:root requirements.txt /opt/airflow/requirements.txt
+RUN pip install --no-cache-dir -r /opt/airflow/requirements.txt
+
+# Copy project source so DAGs can import from core_etl, ml_engine, ingestion
+COPY --chown=airflow:root core_etl/   /opt/airflow/core_etl/
+COPY --chown=airflow:root ml_engine/  /opt/airflow/ml_engine/
+COPY --chown=airflow:root ingestion/  /opt/airflow/ingestion/

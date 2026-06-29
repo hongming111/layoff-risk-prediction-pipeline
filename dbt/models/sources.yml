@@ -1,0 +1,18 @@
+version: 2
+
+# Documents the raw Parquet files written by the ingestion layer.
+# Staging models read these directly via read_parquet() — no dbt source plugin needed.
+sources:
+  - name: processed
+    description: Parquet files written by the Airflow ingestion tasks.
+    tables:
+      - name: market
+        description: Daily OHLCV data with rolling volatility columns (vol_7d, vol_14d, vol_21d).
+      - name: fundamentals
+        description: Quarterly balance sheet ratios per ticker (debt_to_equity, current_ratio, profit_margin).
+      - name: sentiment
+        description: Daily news sentiment scores with 7-day rolling mean per ticker.
+      - name: macro
+        description: Monthly BLS JOLTS + CPS labor market series.
+      - name: warn_labels
+        description: Resolved WARN Act event dates with stock ticker mapping from entity_resolver.

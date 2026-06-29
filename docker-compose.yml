@@ -1,0 +1,115 @@
+version: "3.9"
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: docker/Dockerfile.airflow
+  env_file: .env
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-retrench}:${POSTGRES_PASSWORD:-retrench_pass}@postgres:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-changeme_in_prod}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    PYTHONPATH: /opt/airflow
+    MLFLOW_TRACKING_URI: http://mlflow:5000
+    DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-retrench}:${POSTGRES_PASSWORD:-retrench_pass}@postgres:5432/${POSTGRES_DB:-retrenchment_db}
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/config:/opt/airflow/config
+    - ./core_etl:/opt/airflow/core_etl
+    - ./ml_engine:/opt/airflow/ml_engine
+    - ./ingestion:/opt/airflow/ingestion
+    - ./dbt:/opt/airflow/dbt
+    - ./scripts:/opt/airflow/scripts
+    - ./data:/opt/airflow/data
+    - ./data/mlflow:/mlflow
+    - airflow_logs:/opt/airflow/logs
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-retrench}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retrench_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-retrenchment_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-retrench}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-init:
+    <<: *airflow-common
+    command: >
+      bash -c "
+        airflow db migrate &&
+        airflow users create
+          --username ${AIRFLOW_ADMIN_USER:-admin}
+          --password ${AIRFLOW_ADMIN_PASS:-admin}
+          --firstname Admin --lastname User
+          --role Admin --email admin@example.com || true
+      "
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    ports:
+      - "8080:8080"
+    command: webserver
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.14.0
+    ports:
+      - "5000:5000"
+    command: >
+      mlflow server
+      --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+      --serve-artifacts
+      --allowed-hosts "*"
+    volumes:
+      - ./data/mlflow:/mlflow
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-retrench}:${POSTGRES_PASSWORD:-retrench_pass}@postgres:5432/${POSTGRES_DB:-retrenchment_db}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: streamlit run dashboard/app.py --server.port 8501 --server.address 0.0.0.0
+
+volumes:
+  postgres_data:
+  airflow_logs:
