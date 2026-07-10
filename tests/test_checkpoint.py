@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import json
 from datetime import date, timedelta
-from pathlib import Path
 
 import pandas as pd
-import pytest
 
 from ingestion.checkpoint import (
     clear_checkpoint,

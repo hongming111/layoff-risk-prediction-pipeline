@@ -96,8 +96,6 @@ def persist_to_postgres(df: pd.DataFrame, table: str = "warn_notices", db_url: O
     """
     import os
 
-    from sqlalchemy import create_engine
-
     url = db_url or os.getenv("DATABASE_URL", "")
     if not url:
         logger.warning("DATABASE_URL not set — skipping Postgres write")

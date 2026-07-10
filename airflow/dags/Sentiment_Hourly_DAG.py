@@ -51,7 +51,6 @@ _RSS_ONLY_HOURLY = True
 
 
 def _ingest_sentiment_hourly(**ctx):
-    from datetime import date, timedelta
     from pathlib import Path
 
     import pandas as pd
@@ -121,7 +120,6 @@ def _ingest_sentiment_hourly(**ctx):
 
 def _validate_sentiment_freshness(**ctx):
     """Warn in the Airflow log if sentiment data is stale (> 2 hours old)."""
-    from datetime import timezone
     from pathlib import Path
 
     path = Path("data/processed/sentiment.parquet")

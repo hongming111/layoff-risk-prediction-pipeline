@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -141,7 +140,7 @@ class TestMacroDedup:
 class TestPredictionsDedup:
     def test_drops_duplicate_ticker_prediction_date(self, tmp_path, monkeypatch):
         import datetime
-        from ml_engine.predict import _append_to_parquet, PREDICTIONS_PARQUET
+        from ml_engine.predict import _append_to_parquet
 
         monkeypatch.setattr("ml_engine.predict.PREDICTIONS_PARQUET", tmp_path / "predictions_log.parquet")
 

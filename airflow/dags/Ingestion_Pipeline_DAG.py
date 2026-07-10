@@ -12,7 +12,6 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.utils.trigger_rule import TriggerRule
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +113,7 @@ def _ingest_fundamentals(**ctx):
 
 
 def _ingest_sentiment(**ctx):
-    from datetime import date, timedelta
+    from datetime import date
     from pathlib import Path
 
     import pandas as pd
@@ -250,7 +249,6 @@ def _run_etl(**ctx):
             ).df()
         finally:
             con.close()
-        feature_path = Path("data/features/feature_matrix.parquet")
         from core_etl.feature_store import write_versioned_matrix
         versioned = write_versioned_matrix(feature_df)
         logger.info(f"Exported dbt mart → {versioned.name} ({feature_df.shape})")

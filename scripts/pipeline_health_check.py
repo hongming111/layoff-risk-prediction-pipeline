@@ -23,10 +23,9 @@ from __future__ import annotations
 import os
 import pickle
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Callable
 
 import pandas as pd
 
@@ -86,9 +85,12 @@ def _grey(t):   return _c(t, "90")
 def _bold(t):   return _c(t, "1")
 
 def _status_str(status: str) -> str:
-    if status == "PASS": return _green("PASS")
-    if status == "WARN": return _yellow("WARN")
-    if status == "FAIL": return _red("FAIL")
+    if status == "PASS":
+        return _green("PASS")
+    if status == "WARN":
+        return _yellow("WARN")
+    if status == "FAIL":
+        return _red("FAIL")
     return _grey("SKIP")
 
 

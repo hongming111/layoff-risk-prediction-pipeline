@@ -21,7 +21,7 @@ import logging
 from typing import Any
 
 import pandas as pd
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
 
