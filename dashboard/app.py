@@ -18,9 +18,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 from sqlalchemy import create_engine, text
+from streamlit_autorefresh import st_autorefresh
 
 DISTRESS_THRESHOLD = float(os.getenv("DISTRESS_ALERT_THRESHOLD", "0.85"))
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://retrench:retrench_pass@localhost:5432/retrenchment_db")
+# Interval must match or exceed the cache TTL (300 s) so a rerun actually sees
+# fresh data rather than hitting the still-warm cache.
+_AUTOREFRESH_INTERVAL_MS = int(os.getenv("DASHBOARD_REFRESH_MS", "300000"))  # 5 min default
 _DEFAULT_MLFLOW_URI = os.getenv(
     "MLFLOW_TRACKING_URI",
     "sqlite:///" + str(Path(__file__).resolve().parent.parent / "mlflow.db").replace("\\", "/"),
@@ -58,8 +62,14 @@ def load_predictions() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=300)
-def load_system_metrics() -> pd.DataFrame:
-    """Load historical precision/recall from MLflow (written by evaluate_drift DAG)."""
+def load_system_metrics(include_seeded: bool = False) -> pd.DataFrame:
+    """Load historical precision/recall from MLflow (written by evaluate_drift DAG).
+
+    Runs tagged seeded=true come from scripts/seed_precision_trend.py — synthetic
+    points that stand in until 90 days of real prediction-vs-actual history exists.
+    Excluded by default so the dashboard never shows fabricated metrics as real;
+    pass include_seeded=True (demo mode) to show them, clearly labeled by the caller.
+    """
     try:
         import mlflow
 
@@ -77,10 +87,14 @@ def load_system_metrics() -> pd.DataFrame:
                 "precision": r.data.metrics.get("precision"),
                 "recall": r.data.metrics.get("recall"),
                 "roc_auc": r.data.metrics.get("roc_auc"),
+                "seeded": r.data.tags.get("seeded") == "true",
             }
             for r in runs
         ]
-        return pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
+        if not df.empty and not include_seeded:
+            df = df[~df["seeded"]]
+        return df
     except Exception:
         return pd.DataFrame()
 
@@ -117,6 +131,9 @@ def load_data_freshness() -> dict:
 
 
 def _render_freshness_sidebar(freshness: dict) -> None:
+    # Sources updated by the hourly sentiment DAG vs. the daily pipeline.
+    _hourly_sources = {"News sentiment"}
+
     with st.sidebar:
         st.divider()
         st.subheader("Data Freshness")
@@ -124,10 +141,12 @@ def _render_freshness_sidebar(freshness: dict) -> None:
             if label.startswith("_"):
                 continue
             icon = "✅" if ts != "not yet generated" else "⚠️"
-            st.markdown(f"{icon} **{label}**  \n`{ts}`")
+            cadence = " *(hourly)*" if label in _hourly_sources else " *(daily)*"
+            st.markdown(f"{icon} **{label}**{cadence}  \n`{ts}`")
         st.divider()
+        refresh_mins = _AUTOREFRESH_INTERVAL_MS // 60_000
         st.caption(f"Dashboard cache loaded at {freshness.get('_loaded_at', '—')}")
-        st.caption("Refreshes every 5 minutes")
+        st.caption(f"Auto-refreshes every {refresh_mins} min")
 
 
 def _incident_banner(high_risk: pd.DataFrame) -> None:
@@ -145,8 +164,13 @@ def _incident_banner(high_risk: pd.DataFrame) -> None:
 
 
 def main() -> None:
+    # Auto-refresh: triggers a Streamlit rerun via a JS component every N ms.
+    # Returns the current run count (unused here but required by the API).
+    st_autorefresh(interval=_AUTOREFRESH_INTERVAL_MS, key="dashboard_autorefresh")
+
     st.title("Corporate Layoff Risk Monitor")
-    st.caption("90-day forward distress probability · refreshes every 5 minutes")
+    refresh_mins = _AUTOREFRESH_INTERVAL_MS // 60_000
+    st.caption(f"90-day forward distress probability · auto-refreshes every {refresh_mins} minutes")
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
@@ -155,6 +179,14 @@ def main() -> None:
         min_score = st.slider("Min score filter", 0.0, 1.0, 0.0, 0.05)
         st.divider()
         st.metric("Alert threshold", f"{DISTRESS_THRESHOLD:.0%}")
+        st.divider()
+        show_demo_trend = st.checkbox(
+            "Show simulated precision trend (demo)",
+            value=False,
+            help="Overlays synthetic precision/recall points from "
+                 "scripts/seed_precision_trend.py, used only until 90 days of "
+                 "real prediction-vs-actual history has accumulated.",
+        )
 
     freshness = load_data_freshness()
     _render_freshness_sidebar(freshness)
@@ -215,9 +247,15 @@ def main() -> None:
         st.plotly_chart(fig, use_container_width=True)
 
     # ── System health: precision over time ────────────────────────────────────
-    metrics_df = load_system_metrics()
+    metrics_df = load_system_metrics(include_seeded=show_demo_trend)
     if not metrics_df.empty:
         st.subheader("System Precision Over Time (Prediction vs Actual Loop)")
+        if show_demo_trend and metrics_df["seeded"].any():
+            st.warning(
+                "⚠️ Includes simulated demo data (seeded=true) — not real "
+                "production evaluation history. Uncheck 'Show simulated "
+                "precision trend' in the sidebar to see only real metrics."
+            )
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=metrics_df["date"], y=metrics_df["precision"],
                                  mode="lines+markers", name="Precision"))

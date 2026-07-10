@@ -42,22 +42,10 @@ def _load_production_model() -> tuple:
     """Return (sklearn_model, version_label).
 
     Load order:
-    1. data/models/xgboost.pkl  (best CV metrics; written by train.py)
-    2. data/models/random_forest.pkl
-    3. MLflow registry (alias champion → challenger → latest version)
-
-    The local-pkl path is primary because MLflow 3.x artifact URIs are not
-    reliably resolvable across Docker containers without extra configuration.
+    1. MLflow registry (alias champion → challenger → latest version)
+    2. data/models/xgboost.pkl   (fallback if MLflow is unreachable)
+    3. data/models/random_forest.pkl
     """
-    for pkl_name, label in [("xgboost", "xgboost_local"), ("random_forest", "rf_local")]:
-        pkl_path = MODEL_DIR / f"{pkl_name}.pkl"
-        if pkl_path.exists():
-            with open(pkl_path, "rb") as fh:
-                model = pickle.load(fh)
-            logger.info(f"Loaded model from {pkl_path}")
-            return model, label
-
-    # MLflow fallback (useful when running outside Docker with direct artifact access)
     mlflow.set_tracking_uri(_DEFAULT_MLFLOW_URI)
     client = mlflow.MlflowClient()
 
@@ -66,8 +54,8 @@ def _load_production_model() -> tuple:
             model = mlflow.sklearn.load_model(f"models:/{MLFLOW_MODEL_NAME}@{alias}")
             logger.info(f"Loaded model from MLflow alias '@{alias}'")
             return model, f"{MLFLOW_MODEL_NAME}@{alias}"
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.info(f"MLflow alias '@{alias}' not available ({exc})")
 
     try:
         versions = client.search_model_versions(
@@ -87,9 +75,18 @@ def _load_production_model() -> tuple:
         except Exception as exc:
             logger.warning(f"MLflow source load failed: {exc}")
 
+    logger.warning("MLflow registry unavailable — falling back to local pickle files")
+    for pkl_name, label in [("xgboost", "xgboost_local"), ("random_forest", "rf_local")]:
+        pkl_path = MODEL_DIR / f"{pkl_name}.pkl"
+        if pkl_path.exists():
+            with open(pkl_path, "rb") as fh:
+                model = pickle.load(fh)
+            logger.info(f"Loaded model from {pkl_path}")
+            return model, label
+
     raise RuntimeError(
-        f"No trained model found. Expected pickle at {MODEL_DIR}/xgboost.pkl or "
-        f"a registered MLflow model named '{MLFLOW_MODEL_NAME}'. "
+        f"No trained model found. Expected a registered MLflow model named "
+        f"'{MLFLOW_MODEL_NAME}' or a pickle at {MODEL_DIR}/xgboost.pkl. "
         "Run training first: python -m ml_engine.train"
     )
 

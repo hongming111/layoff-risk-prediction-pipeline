@@ -67,3 +67,7 @@ Thumbs.db
 .coverage
 htmlcov/
 .ruff_cache/
+
+# Personal working docs — not part of the public repo
+*.docx
+*.pdf

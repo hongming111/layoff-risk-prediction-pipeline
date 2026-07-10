@@ -1,0 +1,13 @@
+{
+  "model_type": "xgboost",
+  "roc_auc_mean": 0.9990644951198782,
+  "precision_mean": 0.9777159221076748,
+  "recall_mean": 0.9376767676767678,
+  "avg_precision_mean": 0.9927100685661643,
+  "accuracy_mean": 0.9916334661354582,
+  "n_cv_splits": 5,
+  "n_features": 13,
+  "n_positive_labels": 497,
+  "lookahead_days": 90,
+  "evaluated_at": "2026-06-27"
+}
