@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corporate Layoff Risk Monitor — Demo</title>
+<style>
+  :root {
+    --page:        #f9f9f7;
+    --surface:     #fcfcfb;
+    --surface-2:   #f2f1ec;
+    --ink:         #0b0b0b;
+    --ink-2:       #52514e;
+    --muted:       #898781;
+    --hairline:    #e1e0d9;
+    --border:      rgba(11,11,11,0.10);
+    --accent:      #e34948;
+    --accent-ink:  #7a1a19;
+    --warning:     #fab219;
+    --warning-ink: #6b4400;
+    --good:        #0ca30c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page:        #0d0d0d;
+      --surface:     #1a1a19;
+      --surface-2:   #232320;
+      --ink:         #ffffff;
+      --ink-2:       #c3c2b7;
+      --muted:       #8f8d86;
+      --hairline:    #2c2c2a;
+      --border:      rgba(255,255,255,0.10);
+      --accent:      #e66767;
+      --accent-ink:  #ffb3b2;
+      --warning-ink: #ffd98a;
+      --good:        #3ecf3e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232320; --ink: #ffffff;
+    --ink-2: #c3c2b7; --muted: #8f8d86; --hairline: #2c2c2a; --border: rgba(255,255,255,0.10);
+    --accent: #e66767; --accent-ink: #ffb3b2; --warning-ink: #ffd98a; --good: #3ecf3e;
+  }
+  :root[data-theme="light"] {
+    --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f2f1ec; --ink: #0b0b0b;
+    --ink-2: #52514e; --muted: #898781; --hairline: #e1e0d9; --border: rgba(11,11,11,0.10);
+    --accent: #e34948; --accent-ink: #7a1a19; --warning-ink: #6b4400; --good: #0ca30c;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .mono { font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "SFMono-Regular", Consolas, monospace; }
+
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; display: flex; flex-direction: column; gap: 24px; }
+
+  .eyebrow {
+    font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  h1 {
+    font-family: ui-monospace, monospace; font-size: clamp(24px, 3.6vw, 32px);
+    letter-spacing: -0.01em; text-wrap: balance; margin: 4px 0 4px;
+  }
+  .subtitle { color: var(--ink-2); font-size: 14.5px; margin: 0; max-width: 65ch; }
+
+  .links { display: flex; gap: 10px; flex-wrap: wrap; }
+  .links a {
+    font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--ink);
+    text-decoration: none; padding: 6px 12px; border-radius: 100px;
+    border: 1px solid var(--border); background: var(--surface);
+  }
+  .links a:hover { border-color: var(--accent); }
+  .links a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .disclaimer {
+    background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--warning);
+    border-radius: 6px; padding: 13px 16px; font-size: 13.5px; color: var(--ink-2);
+    display: flex; gap: 10px;
+  }
+  .disclaimer .glyph { flex-shrink: 0; color: var(--warning-ink); }
+  .disclaimer a { color: var(--ink); }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 13px 15px; }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi .value { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 22px; margin-top: 3px; }
+
+  section { display: flex; flex-direction: column; gap: 12px; }
+  .section-title { font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; }
+
+  .bar-row { display: grid; grid-template-columns: 52px 1fr 68px; align-items: center; gap: 10px; padding: 5px 0; position: relative; }
+  .bar-row .ticker { font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--ink-2); }
+  .bar-track { background: var(--surface-2); border-radius: 3px; height: 16px; position: relative; }
+  .bar-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+  .bar-row .val { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ink-2); text-align: right; }
+  .bar-row[data-tooltip] { cursor: default; }
+  .bar-row[data-tooltip]::after {
+    content: attr(data-tooltip); position: absolute; left: 52px; top: -6px; transform: translateY(-100%);
+    background: var(--ink); color: var(--page); font-family: ui-monospace, monospace; font-size: 11px;
+    padding: 4px 8px; border-radius: 4px; white-space: nowrap; opacity: 0; pointer-events: none;
+    transition: opacity 0.12s ease; z-index: 2;
+  }
+  .bar-row:hover::after { opacity: 1; }
+  .bar-row:hover .bar-fill { filter: brightness(1.08); }
+
+  .val-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .val-metrics .m { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .val-metrics .m .label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .val-metrics .m .value { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 18px; margin-top: 2px; }
+  .val-caption { grid-column: 1 / -1; font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .table-scroll { overflow-x: auto; }
+  table.predtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.predtable th {
+    text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--muted); font-weight: 500; padding: 7px 10px; border-bottom: 1px solid var(--hairline);
+  }
+  table.predtable td { padding: 7px 10px; border-bottom: 1px solid var(--hairline); font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 12.5px; }
+  table.predtable td.tk { font-family: -apple-system, sans-serif; font-weight: 600; }
+
+  .footnote { font-size: 13px; color: var(--ink-2); border-top: 1px solid var(--hairline); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    .kpi-row, .val-metrics { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div>
+    <div class="eyebrow">Portfolio demo · static snapshot</div>
+    <h1>Corporate Layoff Risk Monitor</h1>
+    <p class="subtitle">90-day forward distress probability, predicted from fused market, fundamental, sentiment, and macro data.</p>
+  </div>
+
+  <div class="links">
+    <a href="https://github.com/hongming111/layoff-risk-prediction-pipeline">↗ Source on GitHub</a>
+    <a href="https://huggingface.co/Hongming111/layoff-risk-xgboost">↗ Model card on the Hub</a>
+  </div>
+
+  <div class="disclaimer">
+    <span class="glyph">⚠</span>
+    <span><b>This is a static portfolio demo, not a live system.</b> Scores below are a real snapshot from the pipeline's XGBoost model as of 2026-07-06, for a small set of well-known public companies chosen to illustrate the output — not investment, HR, or legal advice, and not updated in real time. The full project runs on Postgres, Airflow, and MLflow, which aren't part of this static page; see the GitHub repo for the live architecture.</span>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="label">Companies in Sample</div><div class="value">10</div></div>
+    <div class="kpi"><div class="label">Snapshot Date</div><div class="value">2026-07-06</div></div>
+    <div class="kpi"><div class="label">Avg Score</div><div class="value">0.0005</div></div>
+  </div>
+
+  <section>
+    <div class="section-title">90-Day Distress Score by Company</div>
+    <div class="panel"><div id="bar-chart"></div></div>
+  </section>
+
+  <section>
+    <div class="section-title">Model Validation Metrics (5-fold Stratified CV)</div>
+    <div class="panel">
+      <div class="val-metrics">
+        <div class="m"><div class="label">ROC-AUC</div><div class="value">0.999</div></div>
+        <div class="m"><div class="label">Precision</div><div class="value">0.978</div></div>
+        <div class="m"><div class="label">Recall</div><div class="value">0.938</div></div>
+        <div class="m"><div class="label">Avg Precision</div><div class="value">0.993</div></div>
+        <div class="val-caption">From the training run logged to MLflow — real cross-validation performance on historical WARN-labeled data, not a live production monitoring feed. 13 features · 5-fold CV · 497 positive labels · 90-day lookahead window. See the model card for known limitations.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">Sample Predictions</div>
+    <div class="panel table-scroll">
+      <table class="predtable">
+        <tr><th>Ticker</th><th>Predicted On</th><th>90-Day Target</th><th>Distress Score</th></tr>
+        <tr><td class="tk">LYFT</td><td>2026-07-06</td><td>2026-10-04</td><td>0.002046</td></tr>
+        <tr><td class="tk">UBER</td><td>2026-07-06</td><td>2026-10-04</td><td>0.000754</td></tr>
+        <tr><td class="tk">COIN</td><td>2026-07-06</td><td>2026-10-04</td><td>0.000716</td></tr>
+        <tr><td class="tk">GOOG</td><td>2026-07-06</td><td>2026-10-04</td><td>0.000273</td></tr>
+        <tr><td class="tk">META</td><td>2026-07-06</td><td>2026-10-04</td><td>0.000267</td></tr>
+        <tr><td class="tk">NFLX</td><td>2026-07-06</td><td>2026-10-04</td><td>0.000220</td></tr>
+        <tr><td class="tk">AAPL</td><td>2026-07-06</td><td>2026-10-04</td><td>0.000192</td></tr>
+        <tr><td class="tk">MSFT</td><td>2026-07-06</td><td>2026-10-04</td><td>0.000174</td></tr>
+        <tr><td class="tk">SNAP</td><td>2026-07-06</td><td>2026-10-04</td><td>0.000168</td></tr>
+        <tr><td class="tk">AMZN</td><td>2026-07-06</td><td>2026-10-04</td><td>0.000112</td></tr>
+      </table>
+    </div>
+    <div style="font-size:12px; color:var(--muted);">Raw snapshot: <a href="sample_predictions.parquet" style="color:var(--ink);">sample_predictions.parquet</a> · <a href="model_metrics.json" style="color:var(--ink);">model_metrics.json</a></div>
+  </section>
+
+  <div class="footnote">
+    <b>Pipeline overview:</b> WARN Act notices (ground truth) fused with market data (yfinance), fundamentals (Alpha Vantage/FMP), news/social sentiment, and BLS macro indicators, aligned into a daily feature matrix via dbt + DuckDB (ASOF joins) and served through an XGBoost classifier with MLflow tracking and Airflow-orchestrated drift monitoring. Full architecture and code: <a href="https://github.com/hongming111/layoff-risk-prediction-pipeline" style="color:var(--ink);">github.com/hongming111/layoff-risk-prediction-pipeline</a>
+  </div>
+
+</div>
+<script>
+(function () {
+  var data = [
+    { t: "LYFT", v: 0.002046 }, { t: "UBER", v: 0.000754 }, { t: "COIN", v: 0.000716 },
+    { t: "GOOG", v: 0.000273 }, { t: "META", v: 0.000267 }, { t: "NFLX", v: 0.000220 },
+    { t: "AAPL", v: 0.000192 }, { t: "MSFT", v: 0.000174 }, { t: "SNAP", v: 0.000168 },
+    { t: "AMZN", v: 0.000112 }
+  ];
+  var max = Math.max.apply(null, data.map(function (d) { return d.v; })) * 1.12;
+  var root = document.getElementById("bar-chart");
+  data.forEach(function (d) {
+    var pct = (d.v / max * 100).toFixed(1);
+    var row = document.createElement("div");
+    row.className = "bar-row";
+    row.setAttribute("data-tooltip", d.t + " · " + d.v.toFixed(6));
+    row.innerHTML =
+      '<span class="ticker">' + d.t + '</span>' +
+      '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%"></span></span>' +
+      '<span class="val">' + d.v.toFixed(4) + '</span>';
+    root.appendChild(row);
+  });
+})();
+</script>
+</body>
+</html>

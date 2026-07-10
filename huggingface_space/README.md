@@ -3,9 +3,8 @@ title: Layoff Risk Monitor Demo
 emoji: ⚠️
 colorFrom: red
 colorTo: gray
-sdk: streamlit
-sdk_version: 1.35.0
-app_file: app.py
+sdk: static
+app_file: index.html
 pinned: false
 ---
 

@@ -37,7 +37,11 @@ def push_model(api: HfApi, repo_id: str) -> None:
 
 def push_space(api: HfApi, repo_id: str) -> None:
     print(f"Creating/updating Space repo: {repo_id}")
-    api.create_repo(repo_id=repo_id, repo_type="space", space_sdk="streamlit", exist_ok=True)
+    # Static Spaces (plain HTML/JS, no Python server) are free on any tier —
+    # Gradio/Docker/Streamlit-class Spaces require an HF PRO subscription for
+    # free-tier cpu-basic hardware. The actual runtime is determined by the
+    # `sdk:` field in huggingface_space/README.md's frontmatter once uploaded.
+    api.create_repo(repo_id=repo_id, repo_type="space", space_sdk="static", exist_ok=True)
     api.upload_folder(
         folder_path=str(PROJECT_ROOT / "huggingface_space"),
         repo_id=repo_id,

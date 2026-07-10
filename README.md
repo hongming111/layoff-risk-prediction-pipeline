@@ -6,7 +6,7 @@ market data, company fundamentals, news/social sentiment, and macro labor
 data into a single feature store — with full MLOps tracking, drift
 monitoring, and a closed prediction-vs-actual feedback loop.
 
-**Live demo:** [Hugging Face Space](https://huggingface.co/spaces/hongming111/layoff-risk-monitor-demo) · **Model:** [Hugging Face Hub](https://huggingface.co/hongming111/layoff-risk-xgboost)
+**Live demo:** [Hugging Face Space](https://huggingface.co/spaces/Hongming111/layoff-risk-monitor-demo) · **Model:** [Hugging Face Hub](https://huggingface.co/Hongming111/layoff-risk-xgboost)
 
 ---
 
